@@ -49,3 +49,13 @@ func (dev *Device) Write(b []byte) (int, error) {
 func (dev *Device) Read(b []byte) (int, error) {
 	return 0, ErrUnsupportedPlatform
 }
+
+// ReadFeature gets a feature report from a HID device.
+func (dev *Device) ReadFeature(reportId byte, length int) ([]byte, error) {
+	return nil, ErrUnsupportedPlatform
+}
+
+// WriteFeature sends a feature report to a HID device.
+func (dev *Device) WriteFeature(data []byte) error {
+	return ErrUnsupportedPlatform
+}

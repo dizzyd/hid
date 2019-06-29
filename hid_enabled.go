@@ -226,3 +226,80 @@ func (dev *Device) Read(b []byte) (int, error) {
 	}
 	return read, nil
 }
+
+// ReadFeature gets a feature report from a HID device.
+func (dev *Device) ReadFeature(reportId byte, length int) ([]byte, error) {
+	if length < 1 {
+		return nil, nil
+	}
+
+	// Abort if device is closed
+	dev.lock.Lock()
+	device := dev.device
+	dev.lock.Unlock()
+
+	if device == nil {
+		return nil, ErrDeviceClosed
+	}
+
+	data := make([]byte, length+1)
+	data[0] = reportId
+
+	read := int(C.hid_get_feature_report(device, (*C.uchar)(&data[0]), C.size_t(len(data))))
+	if read == -1 {
+		// If the read failed, verify if closed or other error
+		dev.lock.Lock()
+		device = dev.device
+		dev.lock.Unlock()
+
+		if device == nil {
+			return nil, ErrDeviceClosed
+		}
+		// Device not closed, some other error occurred
+		message := C.hid_error(device)
+		if message == nil {
+			return nil, errors.New("hidapi: unknown failure")
+		}
+		failure, _ := wcharTToString(message)
+		return nil, errors.New("hidapi: " + failure)
+	}
+
+	return data[1:], nil
+}
+
+// WriteFeature sends a feature report to a HID device.
+func (dev *Device) WriteFeature(data []byte) error {
+	if len(data) < 1 {
+		return nil
+	}
+
+	// Abort if device is closed
+	dev.lock.Lock()
+	device := dev.device
+	dev.lock.Unlock()
+
+	if device == nil {
+		return ErrDeviceClosed
+	}
+
+	read := int(C.hid_send_feature_report(device, (*C.uchar)(&data[0]), C.size_t(len(data))))
+	if read == -1 {
+		// If the write failed, verify if closed or other error
+		dev.lock.Lock()
+		device = dev.device
+		dev.lock.Unlock()
+
+		if device == nil {
+			return ErrDeviceClosed
+		}
+		// Device not closed, some other error occurred
+		message := C.hid_error(device)
+		if message == nil {
+			return errors.New("hidapi: unknown failure")
+		}
+		failure, _ := wcharTToString(message)
+		return errors.New("hidapi: " + failure)
+	}
+
+	return nil
+}
